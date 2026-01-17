@@ -12,7 +12,7 @@ type Config struct {
 
 const filepath = "cfg"
 
-func SaveConfig(cfg Config) error {
+func SaveConfig(cfg *Config) error {
 	f, err := os.Create(filepath)
 	if err != nil {
 		return err
@@ -22,14 +22,14 @@ func SaveConfig(cfg Config) error {
 	return json.NewEncoder(f).Encode(cfg)
 }
 
-func LoadConfig() (Config, error) {
+func LoadConfig() (*Config, error) {
 	var cfg Config
 	f, err := os.Open(filepath)
 	if err != nil {
-		return cfg, err
+		return &cfg, err
 	}
 
 	defer f.Close()
 	err = json.NewDecoder(f).Decode(&cfg)
-	return cfg, err
+	return &cfg, err
 }
