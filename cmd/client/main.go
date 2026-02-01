@@ -78,7 +78,18 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command, str
 	utils.ReverseStringArr(commandSplit)
 	job := commandSplit[0]
 	commandType := commandSplit[1]
-	commandArgs := commandSplit[2:]
+	commandArgsEncoded := commandSplit[2:]
+	var commandArgs []string
+
+	for _, arg := range commandArgsEncoded {
+			decoded, err := encoding.Base32DecodeNoPadding(arg)
+			if err != nil {
+					fmt.Println("Error decoding command arg:", err)
+					return
+			}
+			commandArgs = append(commandArgs, string(decoded))
+	}
+
 
 	cmdType := strings.ToLower(commandType)
 

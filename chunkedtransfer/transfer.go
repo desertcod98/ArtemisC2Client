@@ -2,6 +2,7 @@ package chunkedtransfer
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -52,6 +53,9 @@ func (t *Transfer) Send() string {
 	for {
 		for (t.nextSeq-t.baseSeq) < windowSize && t.nextSeq < uint32(t.TotalChunks) {
 			payloadToSend := getNextPayload(t)
+			fmt.Println("base", t.baseSeq)
+			fmt.Println("next", t.nextSeq)
+			fmt.Println("payload", payloadToSend)
 			go func(ackCh chan uint32) {
 				res, err := dns.DnsQuery(payloadToSend + "." + t.JobId)
 				if err == nil {
@@ -80,6 +84,8 @@ func (t *Transfer) Send() string {
 					break getMaxAckLoop
 				}
 			}
+			fmt.Println("maxAck", maxAck)
+			fmt.Println("totalChunks", t.TotalChunks)
 			if maxAck > t.baseSeq {
 				t.baseSeq = maxAck
 				if !timer.Stop() {
