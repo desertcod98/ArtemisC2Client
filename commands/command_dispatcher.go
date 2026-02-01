@@ -8,3 +8,9 @@ func NewDispatcher(ctx *config.Context) map[string]Command {
 		"setbeaconinterval": SetBeaconIntervalCommand{SetBeaconIntervalCh: ctx.SetBeaconIntervalCh},
 	}
 }
+
+func NewStreamDispatcher(ctx *config.Context) map[string]StreamCommand {
+	return map[string]StreamCommand{
+		"shell": ShellCommand{},
+	}
+}
