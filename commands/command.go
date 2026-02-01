@@ -1,5 +1,5 @@
 package commands
 
-type Command interface{
-	Execute(args []string) <- chan string
+type Command interface {
+	Execute(args []string) []byte
 }

