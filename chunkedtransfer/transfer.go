@@ -2,7 +2,6 @@ package chunkedtransfer
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -53,9 +52,6 @@ func (t *Transfer) Send() string {
 	for {
 		for (t.nextSeq-t.baseSeq) < windowSize && t.nextSeq < uint32(t.TotalChunks) {
 			payloadToSend := getNextPayload(t)
-			fmt.Println("base", t.baseSeq)
-			fmt.Println("next", t.nextSeq)
-			fmt.Println("payload", payloadToSend)
 			go func(ackCh chan uint32) {
 				res, err := dns.DnsQuery(payloadToSend + "." + t.JobId)
 				if err == nil {
@@ -84,8 +80,6 @@ func (t *Transfer) Send() string {
 					break getMaxAckLoop
 				}
 			}
-			fmt.Println("maxAck", maxAck)
-			fmt.Println("totalChunks", t.TotalChunks)
 			if maxAck > t.baseSeq {
 				t.baseSeq = maxAck
 				if t.nextSeq < t.baseSeq {
@@ -119,6 +113,7 @@ func (t *Transfer) Send() string {
 // TODO PROBLEM! in my function i do base32encode and then i split the args, because in normal commands
 // each arg is encoded by himself (the server needs to know which is which).
 // this function is ugly and could not work, just for testing (it splits in chunks and then encodes)
+// TODO seems to use too little characters, but works fine?
 func getNextPayload(t *Transfer) string {
 	const maxBytesPerLabel = 39 // 39 bytes -> 63 base32 chars
 	chunk := make([]byte, chunkSize)
