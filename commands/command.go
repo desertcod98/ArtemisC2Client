@@ -1,5 +1,5 @@
 package commands
 
 type Command interface {
-	Execute(args []string) string
+	Execute(args []string) []byte
 }

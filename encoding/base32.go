@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func Base32Encode(data string) string {
-	encoded := base32.StdEncoding.EncodeToString([]byte(data))
+func Base32Encode(data []byte) string {
+	encoded := base32.StdEncoding.EncodeToString(data)
 	return strings.TrimRight(encoded, "=")
 }

@@ -6,10 +6,10 @@ import (
 
 type WhoamiCommand struct{}
 
-func (c WhoamiCommand) Execute(args []string) string {
+func (c WhoamiCommand) Execute(args []string) []byte {
 	out, err := exec.Command("whoami").Output()
 	if err != nil {
-		return err.Error()
+		return []byte(err.Error())
 	}
-	return string(out)
+	return out
 }

