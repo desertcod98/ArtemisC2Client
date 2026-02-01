@@ -10,6 +10,7 @@ import (
 	"github.com/desertcod98/ArtemisC2Client/config"
 	"github.com/desertcod98/ArtemisC2Client/dns"
 	"github.com/desertcod98/ArtemisC2Client/encoding"
+	"github.com/desertcod98/ArtemisC2Client/utils"
 )
 
 func main() {
@@ -72,7 +73,7 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command) {
 		return
 	}
 
-	reverseStringArr(commandSplit)
+	utils.ReverseStringArr(commandSplit)
 	job := commandSplit[0]
 	commandType := commandSplit[1]
 	commandArgs := commandSplit[2:]
@@ -91,8 +92,4 @@ func initContext(cfg *config.Config) *config.Context {
 	}
 }
 
-func reverseStringArr(input []string) {
-	for i, j := 0, len(input)-1; i < j; i, j = i+1, j-1 {
-		input[i], input[j] = input[j], input[i]
-	}
-}
+
