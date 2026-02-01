@@ -21,7 +21,7 @@ const (
 var (
 	maxCharacters = ((255-(jobIdLength+len(dns.DomainName)))/64)*63 - 8 // -8 is for the characters needed to store the int32 chunkSeq
 	chunkSize     = (maxCharacters * 5) / 8                             //base32 encoding
-	timeout, _    = time.ParseDuration("4000ms")
+	timeout, _    = time.ParseDuration("300ms")
 )
 
 type Transfer struct {
@@ -88,9 +88,11 @@ func (t *Transfer) Send() string {
 			fmt.Println("totalChunks", t.TotalChunks)
 			if maxAck > t.baseSeq {
 				t.baseSeq = maxAck
-				if !timer.Stop() {
-					<-timer.C
+				if t.nextSeq < t.baseSeq {
+					t.nextSeq = t.baseSeq
 				}
+
+				timer.Reset(timeout)
 				if maxAck == uint32(t.TotalChunks-1) {
 					return "ok"
 				}
