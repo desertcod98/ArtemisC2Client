@@ -2,7 +2,9 @@ package chunkedtransfer
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -18,9 +20,14 @@ const (
 )
 
 var (
-	maxCharacters = ((255-(jobIdLength+len(dns.DomainName)))/64)*63 - 8 // -8 is for the characters needed to store the int32 chunkSeq
-	chunkSize     = (maxCharacters * 5) / 8                             //base32 encoding
-	timeout, _    = time.ParseDuration("300ms")
+	// TODO this way the dns labels are saturated at 255 chars (counting the last .), but for some reason it does not work
+	// seems like the server is not sending ACK
+	maxCharacters = int(math.Floor(
+		(float64(255-jobIdLength-len(dns.DomainName)-8-2) / 64.0) * 63,
+	))
+
+	chunkSize  = (maxCharacters * 5) / 8 //base32 encoding
+	timeout, _ = time.ParseDuration("6300ms")
 )
 
 type Transfer struct {
@@ -33,7 +40,8 @@ type Transfer struct {
 }
 
 func NewTransfer(jobId string, reader io.ReaderAt, totalBytes uint64) Transfer {
-	totalChunks := totalBytes/uint64(chunkSize) + 1
+	totalChunks := int((totalBytes + uint64(chunkSize) - 1) / uint64(chunkSize))
+	fmt.Println(totalChunks)
 	return Transfer{
 		JobId:       jobId,
 		Reader:      reader,
