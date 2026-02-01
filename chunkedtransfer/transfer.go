@@ -34,7 +34,7 @@ type Transfer struct {
 }
 
 func NewTransfer(jobId string, reader io.ReaderAt, totalBytes uint64) Transfer {
-	totalChunks := totalBytes / uint64(chunkSize)
+	totalChunks := totalBytes/uint64(chunkSize) + 1
 	return Transfer{
 		JobId:       jobId,
 		Reader:      reader,
@@ -51,7 +51,7 @@ func (t *Transfer) Send() string {
 	defer timer.Stop()
 
 	for {
-		for (t.nextSeq-t.baseSeq) < windowSize && t.nextSeq <= uint32(t.TotalChunks) {
+		for (t.nextSeq-t.baseSeq) < windowSize && t.nextSeq < uint32(t.TotalChunks) {
 			payloadToSend := getNextPayload(t)
 			fmt.Println("base", t.baseSeq)
 			fmt.Println("next", t.nextSeq)
@@ -102,11 +102,35 @@ func (t *Transfer) Send() string {
 	}
 }
 
+// func getNextPayload(t *Transfer) string {
+// 	chunk := make([]byte, chunkSize)
+// 	t.Reader.ReadAt(chunk, int64(t.nextSeq)*int64(chunkSize))
+// 	chunkStr := encoding.Base32Encode(chunk)
+// 	chunkStrArr := utils.SplitStringArrByLength(chunkStr, 63) // DNS labels have max 63 chars each
+// 	utils.ReverseStringArr(chunkStrArr)
+// 	var seqBytes [4]byte
+// 	binary.LittleEndian.PutUint32(seqBytes[:], t.nextSeq)
+// 	chunkStrArr = append(chunkStrArr, encoding.Base32Encode(seqBytes[:]))
+// 	return strings.Join(chunkStrArr, ".")
+// }
+
+// TODO PROBLEM! in my function i do base32encode and then i split the args, because in normal commands
+// each arg is encoded by himself (the server needs to know which is which).
+// this function is ugly and could not work, just for testing (it splits in chunks and then encodes)
 func getNextPayload(t *Transfer) string {
+	const maxBytesPerLabel = 39 // 39 bytes -> 63 base32 chars
 	chunk := make([]byte, chunkSize)
 	t.Reader.ReadAt(chunk, int64(t.nextSeq)*int64(chunkSize))
-	chunkStr := encoding.Base32Encode(chunk)
-	chunkStrArr := utils.SplitStringArrByLength(chunkStr, 63) // DNS labels have max 63 chars each
+
+	var chunkStrArr []string
+	for i := 0; i < len(chunk); i += maxBytesPerLabel {
+		end := i + maxBytesPerLabel
+		if end > len(chunk) {
+			end = len(chunk)
+		}
+		label := encoding.Base32Encode(chunk[i:end])
+		chunkStrArr = append(chunkStrArr, label)
+	}
 	utils.ReverseStringArr(chunkStrArr)
 	var seqBytes [4]byte
 	binary.LittleEndian.PutUint32(seqBytes[:], t.nextSeq)
