@@ -9,7 +9,7 @@ import (
 var (
 	client     = dns.Client{}
 	dnsServer  = "127.0.0.1:53"
-	DomainName = "artemis.com"
+	DomainName = ".artemis.com."
 )
 
 // TODO library is used because with go standard implementation you can not specify
@@ -17,7 +17,7 @@ var (
 // with the go standard implementation
 func DnsQuery(subdomain string) (string, error) {
 	m := dns.Msg{}
-	query := subdomain + ".artemis.com."
+	query := subdomain + DomainName
 	m.SetQuestion(query, dns.TypeTXT)
 
 	r, _, err := client.Exchange(&m, dnsServer)
