@@ -1,6 +1,9 @@
 package commands
 
-import "strconv"
+import (
+	"encoding/binary"
+	"strconv"
+)
 
 type SetBeaconIntervalCommand struct {
 	SetBeaconIntervalCh chan (int)
@@ -15,5 +18,7 @@ func (c SetBeaconIntervalCommand) Execute(args []string) []byte {
 		return []byte("err: <seconds> must be int")
 	}
 	c.SetBeaconIntervalCh <- interval
-	return []byte("ok")
+	var intervalBytes [4]byte
+	binary.LittleEndian.PutUint32(intervalBytes[:], uint32(interval))
+	return intervalBytes[:]
 }
