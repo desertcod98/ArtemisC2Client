@@ -18,7 +18,6 @@ var (
 func DnsQuery(subdomain string) (string, error) {
 	m := dns.Msg{}
 	query := subdomain + DomainName
-	fmt.Println(query)
 	m.SetQuestion(query, dns.TypeTXT)
 
 	r, _, err := client.Exchange(&m, dnsServer)
