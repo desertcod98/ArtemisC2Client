@@ -103,8 +103,15 @@ func (t *Transfer) Send() string {
 }
 
 func getNextPayload(t *Transfer) string {
-	chunk := make([]byte, chunkSize)
-	t.Reader.ReadAt(chunk, int64(t.nextSeq)*int64(chunkSize))
+	start := int64(t.nextSeq) * int64(chunkSize)
+	end := start + int64(chunkSize)
+	if end > int64(t.TotalBytes) {
+		end = int64(t.TotalBytes)
+	}
+	length := end - start
+
+	chunk := make([]byte, length)
+	t.Reader.ReadAt(chunk, start)
 	chunkStr := encoding.Base32Encode(chunk)
 	chunkStrArr := utils.SplitStringArrByLength(chunkStr, 63) // DNS labels have max 63 chars each
 	utils.ReverseStringArr(chunkStrArr)
