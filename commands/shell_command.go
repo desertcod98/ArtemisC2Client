@@ -9,7 +9,7 @@ import (
 
 type ShellCommand struct{}
 
-func (c ShellCommand) Execute(args []string) (io.ReaderAt, uint64) {
+func (c ShellCommand) Execute(args []string) (io.ReaderAt, int64, io.Closer) {
 	var out []byte
 	var err error
 
@@ -18,5 +18,5 @@ func (c ShellCommand) Execute(args []string) (io.ReaderAt, uint64) {
 	if err != nil {
 		out = []byte(err.Error())
 	}
-	return bytes.NewReader(out), uint64(len(out))
+	return bytes.NewReader(out), int64(len(out)), nil
 }
