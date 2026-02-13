@@ -15,7 +15,7 @@ import (
 
 const (
 	jobIdLength = 5
-	windowSize  = 5
+	windowSize  = 32
 )
 
 var (

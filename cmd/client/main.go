@@ -108,8 +108,11 @@ func collectAndSendResult(cmd commands.Command, commandArgs []string, job string
 }
 
 func collectAndSendStreamResult(cmd commands.StreamCommand, commandArgs []string, job string) {
-	stream, totalBytes := cmd.Execute(commandArgs)
-	transfer := chunkedtransfer.NewTransfer(job, stream, totalBytes)
+	stream, totalBytes, closer := cmd.Execute(commandArgs)
+	if closer != nil {
+			defer closer.Close()
+	}
+	transfer := chunkedtransfer.NewTransfer(job, stream, uint64(totalBytes))
 	transfer.Send()
 }
 

@@ -12,5 +12,6 @@ func NewDispatcher(ctx *config.Context) map[string]Command {
 func NewStreamDispatcher(ctx *config.Context) map[string]StreamCommand {
 	return map[string]StreamCommand{
 		"shell": ShellCommand{},
+		"download": DownloadCommand{},
 	}
 }
