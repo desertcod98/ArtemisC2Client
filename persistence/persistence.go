@@ -29,5 +29,6 @@ func TryInit() {
 		}
 	}
 	
-	tryInitWmi(destPath)
+	if(tryInitWmi(destPath)) return
+	tryInitRunkey()
 }
