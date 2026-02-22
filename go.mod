@@ -5,6 +5,7 @@ go 1.25.5
 require github.com/miekg/dns v1.1.69
 
 require (
+	github.com/go-ole/go-ole v1.3.0
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
