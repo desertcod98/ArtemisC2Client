@@ -11,10 +11,16 @@ type Config struct {
 	BeaconInterval int    `json:"beacon_interval"` // in seconds
 }
 
-func getConfigPath() string {
+
+const dataDirName = "ArtemisC2"
+
+func GetDataDir() string {
 	appdata := os.Getenv("APPDATA")
-	dir := filepath.Join(appdata, "ArtemisC2")
-	return filepath.Join(dir, "cfg")
+	return filepath.Join(appdata, dataDirName)
+}
+
+func getConfigPath() string {
+	return filepath.Join(GetDataDir(), "cfg")
 }
 
 func SaveConfig(cfg *Config) error {

