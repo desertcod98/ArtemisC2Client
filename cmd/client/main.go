@@ -3,7 +3,9 @@ package main
 import (
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/desertcod98/ArtemisC2Client/chunkedtransfer"
 	"github.com/desertcod98/ArtemisC2Client/commands"
@@ -16,11 +18,23 @@ import (
 )
 
 func main() {
+	// Single instance check: Named mutex Windows
+	mutexName := "ArtemisC2ClientMutex"
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	createMutex := kernel32.NewProc("CreateMutexW")
+	namePtr, _ := syscall.UTF16PtrFromString(mutexName)
+	_, _, lastErr := createMutex.Call(0, 0, uintptr(unsafe.Pointer(namePtr)))
+
+	// 183 is the error for Mutex already existing
+	if errno, ok := lastErr.(syscall.Errno); ok && errno == 183 {
+		return
+	}
+
 	cfg, configErr := config.LoadConfig()
 
 	if configErr != nil {
 		err := initAgent(cfg)
-		if err != nil{
+		if err != nil {
 			log.Log(err.Error())
 			return
 		}
