@@ -9,7 +9,7 @@
     {
       "label": "build-release",
       "type": "shell",
-      "command": "go build -trimpath -ldflags=\"-s -w -buildid= -H=windowsgui\" ./cmd/client"
+      "command": "go build -trimpath -ldflags=\"-s -w -buildid= -H=windowsgui\" -buildvcs=false ./cmd/client"
     }
   ]
 }
