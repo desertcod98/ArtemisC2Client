@@ -15,7 +15,7 @@ import (
 
 const (
 	jobIdLength = 5
-	windowSize  = 32
+	windowSize  = 16
 )
 
 var (
@@ -23,8 +23,10 @@ var (
 		(float64(255-jobIdLength-len(dns.DomainName)-8) / 64.0) * 63,
 	))
 
-	chunkSize  = (maxCharacters * 5) / 8 //base32 encoding
-	timeout, _ = time.ParseDuration("6300ms")
+	chunkSize      = (maxCharacters * 3) / 4 //base64 encoding
+	maxTimeout, _  = time.ParseDuration("80s")
+	minTimeout, _  = time.ParseDuration("2s")
+	currentTimeout = minTimeout
 )
 
 type Transfer struct {
@@ -50,7 +52,7 @@ func (t *Transfer) Send() string {
 	sendInitialData(t)
 
 	ackChan := make(chan uint32, windowSize)
-	timer := time.NewTimer(timeout)
+	timer := time.NewTimer(minTimeout)
 	defer timer.Stop()
 
 	for {
@@ -90,14 +92,15 @@ func (t *Transfer) Send() string {
 					t.nextSeq = t.baseSeq
 				}
 
-				timer.Reset(timeout)
-				if maxAck == uint32(t.TotalChunks-1) {
+				timer.Reset(minTimeout)
+				if maxAck == uint32(t.TotalChunks) {
 					return "ok"
 				}
 			}
 		case <-timer.C:
 			t.nextSeq = t.baseSeq
-			timer.Reset(timeout)
+			currentTimeout = time.Duration(math.Min(float64(currentTimeout*2), float64(maxTimeout)))
+			timer.Reset(currentTimeout)
 		}
 	}
 }
@@ -112,12 +115,12 @@ func getNextPayload(t *Transfer) string {
 
 	chunk := make([]byte, length)
 	t.Reader.ReadAt(chunk, start)
-	chunkStr := encoding.Base32Encode(chunk)
+	chunkStr := encoding.Base64UrlEncode(chunk)
 	chunkStrArr := utils.SplitStringArrByLength(chunkStr, 63) // DNS labels have max 63 chars each
 	utils.ReverseStringArr(chunkStrArr)
 	var seqBytes [4]byte
 	binary.LittleEndian.PutUint32(seqBytes[:], t.nextSeq)
-	chunkStrArr = append(chunkStrArr, encoding.Base32Encode(seqBytes[:]))
+	chunkStrArr = append(chunkStrArr, encoding.Base64UrlEncode(seqBytes[:]))
 	return strings.Join(chunkStrArr, ".")
 }
 
@@ -126,8 +129,8 @@ func sendInitialData(t *Transfer) {
 	for {
 		var totalChunkBytes [4]byte
 		binary.LittleEndian.PutUint32(totalChunkBytes[:], uint32(t.TotalChunks))
-		req := encoding.Base32Encode(totalChunkBytes[:]) + "." +
-			encoding.Base32Encode([]byte("totalchunks")) + "." +
+		req := encoding.Base64UrlEncode(totalChunkBytes[:]) + "." +
+			encoding.Base64UrlEncode([]byte("totalchunks")) + "." +
 			t.JobId
 		res, _ := dns.DnsQuery(req)
 		if res == "ok" {
