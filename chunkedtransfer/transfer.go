@@ -60,6 +60,10 @@ func (t *Transfer) Send() string {
 			payloadToSend := getNextPayload(t)
 			go func(ackCh chan uint32) {
 				res, err := dns.DnsQuery(payloadToSend + "." + t.JobId)
+				if res == "COMPLETED"{
+					ackChan <- uint32(t.TotalChunks)
+					return
+				}
 				if err == nil {
 					ack, atoiErr := strconv.Atoi(res)
 					if atoiErr == nil {
