@@ -101,3 +101,12 @@ go build -trimpath -ldflags="-s -w -buildid= -H=windowsgui" -buildvcs=false ./cm
 
 ### VSCode tasks
 If you are using VSCode, tasks for both builds are ready to use.
+
+## Contributing
+
+Pull requests are very welcome, but the reviews / merge of them might take some time. I discourage changing the structure of the project as I will likely not merge those kinds of requests, but the ones pertaining to new Commands, Signals, return types, optimizations will all be considered.
+
+
+## Security notice
+
+This project is for authorized research and educational use only. Running a C2 server may be illegal or against policy in many environments. Use responsibly.
